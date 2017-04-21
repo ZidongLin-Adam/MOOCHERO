@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityStandardAssets.CrossPlatformInput;
 
 public class PlayerMove : MonoBehaviour
 {
@@ -8,33 +9,39 @@ public class PlayerMove : MonoBehaviour
     public int MoveSpeed = 2;
     public Animator PlayerAnimator;
 
-    void CrossMove()
+    private float horizonCrossInput;
+    private float vertiCrossInput;
+
+    void CrossMove(float h_cInput,float v_cInput)
     {
-        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D))
+        if (h_cInput != 0.0f || v_cInput != 0.0f)
         {
-            PlayerAnimator.SetBool("isWalk", true);
-            if (Input.GetKey(KeyCode.W))
+            Debug.Log("horizonInput:" + h_cInput+"====="+"vertical"+ v_cInput);
+
+           PlayerAnimator.SetBool("isWalk", true);
+            if (v_cInput > 0)
             {
-                transform.Translate(Vector3.forward * MoveSpeed * Time.deltaTime);
+                transform.Translate(Vector3.forward * MoveSpeed * Time.deltaTime * v_cInput);
             }
-            else if (Input.GetKey(KeyCode.S))
+            else if (v_cInput < 0)
             {
-                transform.Translate(Vector3.back * MoveSpeed / 2 * Time.deltaTime);
+                transform.Translate(Vector3.forward * MoveSpeed / 2 * Time.deltaTime * v_cInput);
             }
 
-            if (Input.GetKey(KeyCode.A))
+            if (h_cInput < 0)
             {
-                transform.Translate(Vector3.left * MoveSpeed * Time.deltaTime);
+                transform.Translate(Vector3.right * MoveSpeed * Time.deltaTime * h_cInput);
             }
-            else if (Input.GetKey(KeyCode.D))
+            else if (h_cInput > 0)
             {
-                transform.Translate(Vector3.right * MoveSpeed * Time.deltaTime);
+                transform.Translate(Vector3.right * MoveSpeed * Time.deltaTime * h_cInput);
             }
         }
         else
         {
             PlayerAnimator.SetBool("isWalk", false);
         }
+        
     }
 
     // Use this for initialization
@@ -46,6 +53,8 @@ public class PlayerMove : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        CrossMove();
+        horizonCrossInput = CrossPlatformInputManager.GetAxis("Horizontal");
+        vertiCrossInput = CrossPlatformInputManager.GetAxis("Vertical");
+        CrossMove(horizonCrossInput, vertiCrossInput);
     }
 }
