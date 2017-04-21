@@ -8,9 +8,13 @@ public class PlayerMove : MonoBehaviour
 
     public int MoveSpeed = 2;
     public Animator PlayerAnimator;
+    public float jumpVelocity = 20.0f;
 
     private float horizonCrossInput;
     private float vertiCrossInput;
+    private Rigidbody playerRigidbody;
+    private bool isGrounded;
+    private float groundedRaycastDistance = 0.01f; 
 
     void CrossMove(float h_cInput,float v_cInput)
     {
@@ -43,18 +47,33 @@ public class PlayerMove : MonoBehaviour
         }
         
     }
-
+    void PlayerJump(bool isGround)
+    {
+        if (Input.GetKey(KeyCode.Space)&& isGround)
+        {
+            PlayerAnimator.SetBool("isJump", true);
+            playerRigidbody.AddForce(Vector3.up * jumpVelocity, ForceMode.VelocityChange);
+        }
+        else
+        {
+            PlayerAnimator.SetBool("isJump", false);
+        }
+    }
     // Use this for initialization
     void Start()
     {
-
+        
+        playerRigidbody = GetComponent<Rigidbody>();
     }
 
     // Update is called once per frame
     void Update()
     {
-        horizonCrossInput = CrossPlatformInputManager.GetAxis("Horizontal");
-        vertiCrossInput = CrossPlatformInputManager.GetAxis("Vertical");
+        horizonCrossInput = CrossPlatformInputManager.GetAxisRaw("Horizontal");
+        vertiCrossInput = CrossPlatformInputManager.GetAxisRaw("Vertical");
         CrossMove(horizonCrossInput, vertiCrossInput);
+        isGrounded = Physics.Raycast(transform.position, -Vector3.up, groundedRaycastDistance);
+        PlayerJump(isGrounded);
+        //playerRigidbody.AddForce(-Vector3.up*3, ForceMode.VelocityChange);
     }
 }
