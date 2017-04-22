@@ -9,6 +9,8 @@ public class PlayerMove : MonoBehaviour
     public int MoveSpeed = 2;
     public Animator PlayerAnimator;
     public float jumpVelocity = 20.0f;
+    public Camera maincamera;
+    public Transform virtualCamera;
 
     private float horizonCrossInput;
     private float vertiCrossInput;
@@ -20,9 +22,10 @@ public class PlayerMove : MonoBehaviour
     {
         if (h_cInput != 0.0f || v_cInput != 0.0f)
         {
-            Debug.Log("horizonInput:" + h_cInput+"====="+"vertical"+ v_cInput);
-
-           PlayerAnimator.SetBool("isWalk", true);
+            //Debug.Log("horizonInput:" + h_cInput+"====="+"vertical"+ v_cInput);
+            transform.rotation = maincamera.transform.rotation;
+            maincamera.transform.position = virtualCamera.transform.position;
+            PlayerAnimator.SetBool("isWalk", true);
             if (v_cInput > 0)
             {
                 transform.Translate(Vector3.forward * MoveSpeed * Time.deltaTime * v_cInput);
@@ -75,5 +78,6 @@ public class PlayerMove : MonoBehaviour
         isGrounded = Physics.Raycast(transform.position, -Vector3.up, groundedRaycastDistance);
         PlayerJump(isGrounded);
         //playerRigidbody.AddForce(-Vector3.up*3, ForceMode.VelocityChange);
+        
     }
 }
