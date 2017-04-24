@@ -9,7 +9,7 @@ public class PlayerCamera : MonoBehaviour {
     private Vector2 mouseDown;
     private Vector2 mouseHold;
 
-    public void rotateCamera()
+    public void RotateCamera()
     {
         if (Input.GetMouseButtonDown(1)){
             //Debug.Log("MouseButtonDown:" + Input.mousePosition);
@@ -27,19 +27,14 @@ public class PlayerCamera : MonoBehaviour {
                 //transform.Rotate( Vector3.up, (mouseHold.x - mouseDown.x) * Time.deltaTime);
             }
         }
-        
-            
     }
 
-    // Use this for initialization
     void Start () {
 		
 	}
 	
-	// Update is called once per frame
 	void Update () {
-        //transform.Rotate(Vector3.up * 3 * rotateSpeed * Time.deltaTime);
-        rotateCamera();
+        RotateCamera();
 
     }
 }
