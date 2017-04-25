@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class MonsterAI : MonoBehaviour {
 
@@ -14,10 +15,24 @@ public class MonsterAI : MonoBehaviour {
     }
 
     private MonState currentState;
+    private NavMeshAgent agent;
+    private Transform selfTransform;
+    //public GameObject moveTarget;
+    
+
+    private void agentMove()
+    {
+        Vector3 randomRange = new Vector3((Random.value - 0.5f) * 2 * 4, 0, (Random.value - 0.5f) * 2 * 4);
+        Vector3 nextDestination = selfTransform.position + randomRange;
+
+        agent.destination = nextDestination;
+    } 
 
     private void OnEnable()
     {
         currentState = MonState.Wander;
+        selfTransform = GetComponent<Transform>();
+        agent = GetComponent<NavMeshAgent>();
     }
 
     private void updateMonState()
@@ -65,10 +80,11 @@ public class MonsterAI : MonoBehaviour {
     // Use this for initialization
     void Start () {
         currentState = MonState.Wander;
-	}
+        
+    }
 	
 	// Update is called once per frame
 	void Update () {
-		
-	}
+        
+    }
 }
