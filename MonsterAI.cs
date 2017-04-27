@@ -47,15 +47,15 @@ public class MonsterAI : MonoBehaviour {
     {
         switch (currentState)
         {
-            case MonState.Wander : updateWanderState();
+            case MonState.Wander : UpdateWanderState();
                 break;
-            case MonState.Track : updateTrackState();
+            case MonState.Track : UpdateTrackState();
                 break;
-            case MonState.Attack : updateAttackState();
+            case MonState.Attack : UpdateAttackState();
                 break;
-            case MonState.Dying : updateDyingState();
+            case MonState.Dying : UpdateDyingState();
                 break;
-            case MonState.Dead: updateDeadState();
+            case MonState.Dead: UpdateDeadState();
                 break;
         }
     }
@@ -69,9 +69,10 @@ public class MonsterAI : MonoBehaviour {
         return !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance;
     }
 
-    private void updateWanderState()
+    private void UpdateWanderState()
     {
         
+
         if (AgentDone())
         {
             Vector3 randomRange = new Vector3((Random.value - 0.5f) * 2 * wanderScope, 0, (Random.value - 0.5f) * 2 * wanderScope);
@@ -123,22 +124,22 @@ public class MonsterAI : MonoBehaviour {
 
     }
 
-    private void updateTrackState()
+    private void UpdateTrackState()
     {
 
     }
 
-    private void updateAttackState()
+    private void UpdateAttackState()
     {
 
     }
 
-    private void updateDyingState()
+    private void UpdateDyingState()
     {
 
     }
 
-    private void updateDeadState()
+    private void UpdateDeadState()
     {
 
     }

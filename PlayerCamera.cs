@@ -6,10 +6,11 @@ public class PlayerCamera : MonoBehaviour {
 
     public Camera mainCamera;
 
+    private Transform selfTransform;
     private Vector2 mouseDown;
     private Vector2 mouseHold;
 
-    public void RotateCamera()
+    void RotateCamera()
     {
         if (Input.GetMouseButtonDown(1)){
             //Debug.Log("MouseButtonDown:" + Input.mousePosition);
@@ -21,19 +22,16 @@ public class PlayerCamera : MonoBehaviour {
             mouseHold = Input.mousePosition;
             if (mouseDown != mouseHold)
             {
-                //mainCamera.transform.RotateAround(transform.position,new Vector3(0,Vector3.Distance(mouseHold,mouseDown),0),0.5f);
-                mainCamera.transform.RotateAround(transform.position, Vector3.up, (mouseHold.x - mouseDown.x) * Time.deltaTime);
-                //mainCamera.transform.RotateAround(transform.position, Vector3.left, (mouseHold.y - mouseDown.y) * Time.deltaTime/2);
-                //transform.Rotate( Vector3.up, (mouseHold.x - mouseDown.x) * Time.deltaTime);
+                mainCamera.transform.RotateAround(selfTransform.position, Vector3.up, (mouseHold.x - mouseDown.x) * Time.deltaTime);
             }
         }
     }
 
     void Start () {
-		
-	}
+        selfTransform = transform;
+    }
 	
-	void Update () {
+	void LateUpdate () {
         RotateCamera();
 
     }
