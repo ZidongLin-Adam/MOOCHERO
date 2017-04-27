@@ -62,14 +62,12 @@ public class PlayerMove : MonoBehaviour
             PlayerAnimator.SetBool("isJump", false);
         }
     }
-    // Use this for initialization
     void Start()
     {
         
         playerRigidbody = GetComponent<Rigidbody>();
     }
 
-    // Update is called once per frame
     void Update()
     {
         horizonCrossInput = CrossPlatformInputManager.GetAxisRaw("Horizontal");
