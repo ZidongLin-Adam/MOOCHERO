@@ -12,7 +12,7 @@ public class MonsterSenior : MonoBehaviour {
     private Transform minPlayer;
     private Transform selfPlayer;
     private float min;
-    private string minName;
+    //private string minName;
     private float FeelingIntervaltimer = 0.0f;
 
     private void Start()
@@ -26,7 +26,7 @@ public class MonsterSenior : MonoBehaviour {
         minPlayer = null;
         GameObject[] palyerList = GameObject.FindGameObjectsWithTag("Player");
         min = float.MaxValue;
-        minName = "还未看到player";
+        //minName = "还未看到player";
         foreach (GameObject p in palyerList)
         {
             float dis = Vector3.Distance(p.transform.position, selfPlayer.position);
@@ -34,14 +34,14 @@ public class MonsterSenior : MonoBehaviour {
             {
                 min = dis;
                 minPlayer = p.transform;
-                Debug.Log("我看到" + p.name +"======" +Time.frameCount);
-                minName = p.name;
+                //Debug.Log("我看到" + p.name +"======" +Time.frameCount);
+                //minName = p.name;
             }
         }
-        if (minPlayer != null)
-        {
-            Debug.Log("我看到离我最近的是" + minName + "======" + Time.frameCount);
-        }
+        //if (minPlayer != null)
+        //{
+            //Debug.Log("我看到离我最近的是" + minName + "======" + Time.frameCount);
+        //}
     }
 
     public Transform GetMinPlayer()
