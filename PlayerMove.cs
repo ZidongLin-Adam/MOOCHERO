@@ -9,7 +9,8 @@ public class PlayerMove : MonoBehaviour {
 
 	float minMouseRotateX = -45.0f;		
 	float maxMouseRotateX = 45.0f;		
-	float mouseRotateX;								
+	float mouseRotateX;					
+	bool isGrounded;					
 
 	Camera myCamera;					
 	Animator anim;
@@ -31,6 +32,32 @@ public class PlayerMove : MonoBehaviour {
 			return;
 		CheckGround();			
 		if (isGrounded == false)				
+			anim.SetBool ("isJump", false);		
+	}
+
+	void CheckGround()
+	{            
+		RaycastHit hitInfo;
+		float shellOffset = 0.01f;
+		float groundCheckDistance = 0.01f;
+		Vector3 currentPos = transform.position;
+		currentPos.y += capsuleCollider.height / 2f;
+		if (Physics.SphereCast (currentPos, capsuleCollider.radius * (1.0f - shellOffset), Vector3.down, out hitInfo,
+			((capsuleCollider.height / 2f) - capsuleCollider.radius) + groundCheckDistance, ~0, QueryTriggerInteraction.Ignore)) {
+			isGrounded = true;
+		} else {
+			isGrounded = false;
+		}
+
+	}
+
+	
+	void Jump(bool isGround){
+		
+		if (CrossPlatformInputManager.GetButtonDown ("Jump") && isGround) {			
+			rigid.AddForce (Vector3.up * jumpVelocity, ForceMode.VelocityChange);	
+			anim.SetBool ("isJump", true);	
+		} else
 			anim.SetBool ("isJump", false);		
 	}
 
