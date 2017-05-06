@@ -9,6 +9,10 @@ public class PlayerHealth : PunBehaviour{
 	public GameObject gun;
 	public float invincibleTime = 3.0f;
 
+	public int team;	
+	public bool isAlive;	
+	public int currentHP;	
+	public bool invincible;
 
 	float timer;
 	Animator anim;
@@ -61,7 +65,39 @@ public class PlayerHealth : PunBehaviour{
 	}
 
 	
+	[PunRPC]
+	public void AddHP(int value)
+	{		if (!isAlive || currentHP == maxHP)	
+			return;
+		currentHP += value;			
+		if (currentHP > maxHP) {	
+			currentHP = maxHP;
+		}
+		photonView.RPC ("UpdateHP", PhotonTargets.All, currentHP);	//使用RPC，更新所有客户端，该玩家对象的血量
+	}
 
+
+	void UpdateHP(int newHP)
+	{
+		currentHP = newHP;		
+		if (currentHP <= 0) {
+			isAlive = false;
+			if (photonView.isMine) {					
+				anim.SetBool ("isDead", true);			
+				Invoke ("PlayerSpawn", respawnTime);
+			}
+		}
+	}
+	
+	void PlayerReset(){
+		init ();	
+		rigid.useGravity = true;		
+		colli.enabled = true;			
+		gun.SetActive (true);				
+		anim.SetBool ("isDead", false);	
+		anim.applyRootMotion = false;	
+		GetComponent<IKController> ().enabled = true;
+	}
 
 
 
