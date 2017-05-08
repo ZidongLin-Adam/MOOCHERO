@@ -55,6 +55,7 @@ public class PlayerHealth : PunBehaviour{
 	}
 
 	
+	[PunRPC]
 	void SetInvincible(bool isInvincible){
 		invincible = isInvincible;
 	}
@@ -73,12 +74,8 @@ public class PlayerHealth : PunBehaviour{
 	}
 
 	
-	public void requestAddHP(int value)
-	{
-		photonView.RPC ("AddHP", PhotonTargets.MasterClient, value);	
-	}
-
 	
+	[PunRPC]
 	public void AddHP(int value)
 	{
 		if (!PhotonNetwork.isMasterClient)	
@@ -89,7 +86,7 @@ public class PlayerHealth : PunBehaviour{
 		if (currentHP > maxHP) {	
 			currentHP = maxHP;
 		}
-		photonView.RPC ("UpdateHP", PhotonTargets.All, currentHP);
+		photonView.RPC ("UpdateHP", PhotonTargets.All, currentHP);	//使用RPC，更新所有客户端，该玩家对象的血量
 	}
 
 
@@ -100,6 +97,10 @@ public class PlayerHealth : PunBehaviour{
 		currentHP = newHP;		
 		if (currentHP <= 0) {
 			isAlive = false;
+			if (photonView.isMine) {					
+				anim.SetBool ("isDead", true);			
+				Invoke ("PlayerSpawn", respawnTime);
+			}
 			rigid.useGravity = false;	
 			colli.enabled = false;		
 			gun.SetActive (false);		
@@ -107,21 +108,20 @@ public class PlayerHealth : PunBehaviour{
 			GetComponent<IKController> ().enabled = false;
 		}
 	}
-
-
-	void PlayerSpawn(){
-		photonView.RPC ("PlayerReset", PhotonTargets.All);	
-		Transform spawnTransform;
-		int rand = Random.Range (0, 4);					
-		if (PhotonNetwork.player.customProperties ["Team"].ToString () == "Team1")
-			spawnTransform = GameManager.gm.teamOneSpawnTransform [rand];
-		else
-			spawnTransform = GameManager.gm.teamTwoSpawnTransform [rand];
-		transform.position = spawnTransform.position;		
-		transform.rotation = Quaternion.identity;
+	
+	[PunRPC]
+	void PlayerReset(){
+		init ();	
+		rigid.useGravity = true;		
+		colli.enabled = true;			
+		gun.SetActive (true);				
+		anim.SetBool ("isDead", false);	
+		anim.applyRootMotion = false;	
+		GetComponent<IKController> ().enabled = true;
 	}
 
-	
+
+	[PunRPC]
 	void SetTeam(int newTeam){
 		team = newTeam;
 	}
