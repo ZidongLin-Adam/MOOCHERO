@@ -41,4 +41,46 @@ public class PlayerShoot : PunBehaviour {
 	}
 
 
+	[PunRPC]
+	void Shoot(PhotonPlayer attacker){
+		if (!PhotonNetwork.isMasterClient)	
+			return;
+		ray.origin = shootingPosition+transform.position;	
+		ray.direction = gunTransform.forward;			
+		Vector3 bulletEffectPosition;					
+
+
+		if (Physics.Raycast (ray, out hitInfo, shootingRange)) {	
+			GameObject go = hitInfo.collider.gameObject;		
+			if (go.tag == "Player") {								
+				PlayerHealth playerHealth = go.GetComponent<PlayerHealth> ();
+				if (playerHealth.team != GetComponent<PlayerHealth> ().team) {
+					playerHealth.TakeDamage (shootingDamage, attacker);		
+				}
+			} else if (go.tag == "Zombie") {					
+				ZombieHealth zh = go.GetComponent<ZombieHealth> ();
+				if (zh != null) {
+					zh.TakeDamage (shootingDamage, attacker);		
+				}
+			}
+			bulletEffectPosition = hitInfo.point;					
+		}else
+			bulletEffectPosition = ray.origin + shootingRange * ray.direction;	
+		photonView.RPC ("ShootEffect", PhotonTargets.All, bulletEffectPosition);
+	}
+
+	[PunRPC]
+	void ShootEffect(Vector3 bulletEffectPosition){
+		AudioSource.PlayClipAtPoint (shootingAudio, transform.position);	
+		if (gunShootingEffect != null && gunBarrelEnd != null) {			
+			(Instantiate (gunShootingEffect, 
+				gunBarrelEnd.position, 
+				gunBarrelEnd.rotation) as GameObject).transform.parent = gunBarrelEnd;
+		}
+		if (bulletEffect != null) {													
+			Instantiate (bulletEffect, 
+				bulletEffectPosition, 
+				Quaternion.identity);
+		}
+	}
 }
