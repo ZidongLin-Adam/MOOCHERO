@@ -17,7 +17,39 @@ public class ZombieAI : PunBehaviour {
 	private ZombieRender zombieRender;			
 
 	private Transform targetPlayer;			
+	void OnEnable()
+	{
+		zombieTransform = transform;				
+		animator = GetComponent<Animator>();		
+		agent = GetComponent<NavMeshAgent>();		
 
+		zombieHealth = GetComponent<ZombieHealth> ();	
+		zombieSoundSensor = GetComponentInChildren<ZombieSoundSensor> ();	
+		zombieRender = GetComponent<ZombieRender>();	
+
+		targetPlayer = null;						
+		curState = FSMState.Wander;					
+	}
+
+	public void requestDisable(){
+		photonView.RPC ("DisableZombie", PhotonTargets.All);
+	}
+
+	[PunRPC]
+	void DisableZombie()
+	{
+		zombieTransform.gameObject.SetActive (false);
+	}
+		
+
+	void FixedUpdate()
+	{
+
+		if (PhotonNetwork.isMasterClient) 
+		{
+			FSMUpdate ();
+		}
+	}
 
 	void FSMUpdate()
 	{
