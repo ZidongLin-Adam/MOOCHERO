@@ -11,7 +11,10 @@ public class ZombieAI : PunBehaviour {
 		Dying,
 		Dead	
 	}
-			
+
+	private Transform zombieTransform;		
+	private Animator animator;				
+	private NavMeshAgent agent;				
 	private ZombieHealth zombieHealth;		
 	private ZombieSoundSensor zombieSoundSensor;
 	private ZombieRender zombieRender;			
@@ -77,6 +80,31 @@ public class ZombieAI : PunBehaviour {
 			UpdateDeadState ();
 			break;
 		}
+	}
+
+	void UpdateWanderState()
+	{
+		
+	}
+
+	void UpdateTrackState()
+	{
+		
+	}
+
+	void UpdateAttackState()
+	{
+
+	}
+
+	void UpdateDyingState()
+	{
+		
+	}
+
+	void UpdateDeadState()
+	{
+
 	}
 
 }
