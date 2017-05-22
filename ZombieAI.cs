@@ -12,6 +12,10 @@ public class ZombieAI : PunBehaviour {
 		Dead	
 	}
 
+	public float currentSpeed = 0.0f;	
+	public float wanderSpeed = 0.9f;	
+	public float trackingSpeed = 4.0f;	
+	public float wanderScope = 15.0f;	
 	private Transform zombieTransform;		
 	private Animator animator;				
 	private NavMeshAgent agent;				
@@ -82,9 +86,39 @@ public class ZombieAI : PunBehaviour {
 		}
 	}
 
+	
 	void UpdateWanderState()
 	{
+		targetPlayer = zombieSoundSensor.getNearestPlayer ();
+		if (targetPlayer != null && GameManager.gm.state == GameManager.GameState.Playing) {
+			curState = FSMState.Track;
+			agent.ResetPath ();
+			return;
+		}
+
+		if (AgentDone ()) {
+			Vector3 randomRange = new Vector3 ((Random.value - 0.5f) * 2 * wanderScope, 0, (Random.value - 0.5f) * 2 * wanderScope);
+			Vector3 nextDestination = zombieTransform.position + randomRange;
+
+			agent.destination = nextDestination;
+
+		} 
 		
+		Vector3 targetVelocity = Vector3.zero;
+		if (agent.desiredVelocity.magnitude > wanderSpeed) {
+			targetVelocity = agent.desiredVelocity.normalized * wanderSpeed;
+		} else {
+			targetVelocity = agent.desiredVelocity;
+		}
+		agent.velocity = targetVelocity;
+		currentSpeed = agent.velocity.magnitude;
+
+		animator.SetFloat("Speed", currentSpeed);
+
+		
+
+		if (zombieRender != null && zombieRender.isCrazy == true)
+			photonView.RPC ("ZombieSetNormal", PhotonTargets.All);
 	}
 
 	void UpdateTrackState()
