@@ -86,7 +86,10 @@ public class ZombieAI : PunBehaviour {
 		}
 	}
 
-	
+	protected bool AgentDone()
+	{
+		return !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance;
+	}
 	void UpdateWanderState()
 	{
 		targetPlayer = zombieSoundSensor.getNearestPlayer ();
@@ -103,7 +106,14 @@ public class ZombieAI : PunBehaviour {
 			agent.destination = nextDestination;
 
 		} 
-		
+		else if(stopTime > 1.0f)
+		{
+			Vector3 nextDestination = zombieTransform.position - zombieTransform.forward * (Random.value) * wanderScope;
+
+			agent.destination = nextDestination;
+
+		}
+
 		Vector3 targetVelocity = Vector3.zero;
 		if (agent.desiredVelocity.magnitude > wanderSpeed) {
 			targetVelocity = agent.desiredVelocity.normalized * wanderSpeed;
@@ -115,7 +125,20 @@ public class ZombieAI : PunBehaviour {
 
 		animator.SetFloat("Speed", currentSpeed);
 
-		
+		if (previousPos == Vector3.zero) 
+		{
+			previousPos = zombieTransform.position;
+		}
+		else 
+		{
+			Vector3 posDiff = zombieTransform.position - previousPos;
+			if (posDiff.magnitude > 0.5) {
+				previousPos = zombieTransform.position;
+				stopTime = 0.0f;
+			} else {
+				stopTime += Time.deltaTime;
+			}
+		}
 
 		if (zombieRender != null && zombieRender.isCrazy == true)
 			photonView.RPC ("ZombieSetNormal", PhotonTargets.All);
