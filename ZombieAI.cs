@@ -20,6 +20,7 @@ public class ZombieAI : PunBehaviour {
 	public float attackFieldOfView = 60.0f;	
 	public float attackInterval = 0.8f;		
 	public int attackDamage = 10;		
+	public float disappearTime = 3.0f;	
 	public FSMState curState;			
 
 	private Vector3 previousPos = Vector3.zero;	
@@ -187,7 +188,54 @@ public class ZombieAI : PunBehaviour {
 
 	void UpdateAttackState()
 	{
+		targetPlayer = zombieSoundSensor.getNearestPlayer ();
+		if (targetPlayer == null) {
+			curState = FSMState.Wander;
+			agent.ResetPath ();
+			animator.SetBool ("isAttack", false);
+			return;
+		}
+		if (Vector3.Distance(targetPlayer.position, zombieTransform.position)>attackRange) {
+			curState = FSMState.Track;
+			agent.ResetPath ();
+			animator.SetBool ("isAttack", false);
+			return;
+		}
 
+		PlayerHealth ph = targetPlayer.GetComponent<PlayerHealth> ();
+		if (ph != null)
+		{
+			Vector3 dir = targetPlayer.position - zombieTransform.position;
+			float degree = Vector3.Angle (dir, zombieTransform.forward);
+
+			if (degree < attackFieldOfView / 2 && degree > -attackFieldOfView / 2) {
+				animator.SetBool ("isAttack", true);
+				if (attackTime > attackInterval) {
+					attackTime = 0;
+					ph.TakeDamage (attackDamage, null);
+					photonView.RPC ("PlayZombieAttackAudio", PhotonTargets.All);
+				}
+				attackTime += Time.deltaTime;
+			} else {
+				animator.SetBool ("isAttack", false);
+				zombieTransform.LookAt(targetPlayer);
+			}
+		}
+
+		agent.SetDestination (targetPlayer.position);
+
+		Vector3 targetVelocity = Vector3.zero;
+		if (agent.desiredVelocity.magnitude > trackingSpeed) {
+			targetVelocity = agent.desiredVelocity.normalized * trackingSpeed;
+		} else {
+			targetVelocity = agent.desiredVelocity;
+		}
+		agent.velocity = targetVelocity;
+		currentSpeed = targetVelocity.magnitude;
+		animator.SetFloat("Speed", currentSpeed);
+
+		if (zombieRender != null && zombieRender.isCrazy == false)
+			photonView.RPC ("ZombieSetCrazy", PhotonTargets.All);
 	}
 
 	void UpdateDyingState()
