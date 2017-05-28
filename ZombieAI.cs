@@ -22,6 +22,7 @@ public class ZombieAI : PunBehaviour {
 	public int attackDamage = 10;		
 	public float disappearTime = 3.0f;	
 	public FSMState curState;			
+	public AudioClip zombieAttackAudio;
 
 	private Vector3 previousPos = Vector3.zero;	
 	private float stopTime = 0;				
@@ -97,12 +98,27 @@ public class ZombieAI : PunBehaviour {
 			UpdateDeadState ();
 			break;
 		}
+
+		if (curState != FSMState.Dead && curState != FSMState.Dying && !zombieHealth.IsAlive) 
+		{
+			curState = FSMState.Dying;
+		}
 	}
 
 	protected bool AgentDone()
 	{
 		return !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance;
 	}
+
+	[PunRPC]
+	void ZombieSetCrazy(){
+		zombieRender.SetCrazy ();
+	}
+	[PunRPC]
+	void ZombieSetNormal(){
+		zombieRender.SetNormal ();
+	}
+
 	void UpdateWanderState()
 	{
 		targetPlayer = zombieSoundSensor.getNearestPlayer ();
@@ -240,12 +256,62 @@ public class ZombieAI : PunBehaviour {
 
 	void UpdateDyingState()
 	{
-		
+		photonView.RPC ("ZombieDead", PhotonTargets.All);
+		animator.SetBool ("isDead",true);
+		disappearTimer = 0;
+		disappeared = false;
+
+		if (zombieRender != null && zombieRender.isCrazy == false)
+			photonView.RPC ("ZombieSetNormal", PhotonTargets.All);
+		curState = FSMState.Dead;
+	}
+
+	[PunRPC]
+	void ZombieDead(){
+		agent.ResetPath ();
+		agent.enabled = false;
+		animator.applyRootMotion = true;
+		GetComponent<CapsuleCollider> ().enabled = false;
 	}
 
 	void UpdateDeadState()
 	{
+		if (!disappeared) {
 
+			if ( disappearTimer > disappearTime) {
+				requestDisable ();
+				disappeared = true;
+			}
+			disappearTimer += Time.deltaTime;
+		}
 	}
+
+
+	[PunRPC]
+	void Born()
+	{
+		targetPlayer = null;
+		curState = FSMState.Wander;
+		zombieHealth.currentHP = zombieHealth.maxHP;
+		agent.enabled = true;
+		agent.ResetPath ();
+
+		animator.applyRootMotion = false;
+		GetComponent<CapsuleCollider> ().enabled = true;
+		animator.SetBool("isDead",false);
+		disappearTimer = 0;
+		disappeared = false;
+		curState = FSMState.Dead;
+	}
+	public void requestSetGeneratorAsParent()
+	{
+		photonView.RPC ("setGeneratorAsParent", PhotonTargets.All);
+	}
+	[PunRPC]
+	void setGeneratorAsParent()
+	{
+		zombieTransform.SetParent (GameObject.Find ("ZombieGenerator").transform);
+	}
+	*/
 
 }
