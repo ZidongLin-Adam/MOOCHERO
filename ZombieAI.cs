@@ -343,4 +343,36 @@ public class ZombieAI : PunBehaviour {
 
 
 
+
+	/**僵尸自动生成
+	 * 这里未用到
+	 * 
+	[PunRPC]
+	void Born()
+	{
+		targetPlayer = null;
+		curState = FSMState.Wander;
+		zombieHealth.currentHP = zombieHealth.maxHP;
+		agent.enabled = true;
+		agent.ResetPath ();
+
+		animator.applyRootMotion = false;
+		GetComponent<CapsuleCollider> ().enabled = true;
+		animator.SetBool("isDead",false);
+		disappearTimer = 0;
+		disappeared = false;
+		curState = FSMState.Dead;
+	}
+
+	//将僵尸对象设为僵尸对象池的子对象
+	public void requestSetGeneratorAsParent()
+	{
+		photonView.RPC ("setGeneratorAsParent", PhotonTargets.All);
+	}
+	[PunRPC]
+	void setGeneratorAsParent()
+	{
+		zombieTransform.SetParent (GameObject.Find ("ZombieGenerator").transform);
+	}
+	*/
 }
