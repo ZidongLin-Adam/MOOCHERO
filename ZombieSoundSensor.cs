@@ -4,8 +4,8 @@ using System.Collections.Generic;
 
 public class ZombieSoundSensor : MonoBehaviour {
 
-	public float Range = 15.0f;			
-	public float sensorInterval = 1.0f;		
+	public float Range = 15.0f;				//僵尸听觉范围
+	public float sensorInterval = 1.0f;		//僵尸听觉感知时间间隔
 
 	private float trigerTime = 0.0f;
 
@@ -16,6 +16,8 @@ public class ZombieSoundSensor : MonoBehaviour {
 	{
 		sensorTransform = transform;
 	}
+
+	//每隔一段时间僵尸使用听觉感知附近
 	void FixedUpdate()
 	{
 		if (trigerTime >= sensorInterval) {
@@ -25,6 +27,8 @@ public class ZombieSoundSensor : MonoBehaviour {
 		trigerTime += Time.deltaTime;
 
 	}
+
+	//更新僵尸听觉范围内的玩家
 	void UpdatePlayerList()
 	{
 		nearestPlayer = null;
@@ -38,13 +42,14 @@ public class ZombieSoundSensor : MonoBehaviour {
 				float dist = Vector3.Distance (p.transform.position, sensorTransform.position);
 				if (dist < Range && dist < min) {
 					min = dist;
-					nearestPlayer = p.transform;
+					nearestPlayer = p.transform;	//设置离僵尸最近的玩家作为僵尸的追踪对象
 				}
 					
 			}
 		}
 	}
 
+	//获取僵尸听觉范围内，离僵尸最近的玩家对象
 	public Transform getNearestPlayer()
 	{
 		return nearestPlayer;
