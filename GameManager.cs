@@ -96,7 +96,53 @@ public class GameManager : PunBehaviour {
 			break;
 		}
 	}
-	
+	void CheckTeamNumber(){
+		PhotonPlayer[] players = PhotonNetwork.playerList;	
+		int teamOneNum = 0, teamTwoNum = 0;						
+		foreach (PhotonPlayer p in players) {				
+			if (p.customProperties ["Team"].ToString () == "Team1")
+				teamOneNum++;
+			else
+				teamTwoNum++;
+		}
+		if (teamOneNum == 0)
+			photonView.RPC ("EndGame", PhotonTargets.All, "Team2",PhotonNetwork.time);
+		else if (teamTwoNum == 0)
+			photonView.RPC ("EndGame", PhotonTargets.All, "Team1",PhotonNetwork.time);
+	}
+
+	void UpdateRealTimeScorePanel()
+	{
+		string team1Title = string.Empty;
+		string team2Title = string.Empty;
+
+		team1Title = string.Format("得分：{0}",currentScoreOfTeam1);
+		team2Title = string.Format("得分：{0}",currentScoreOfTeam2);
+
+		Team1RealTimeScorePanelScore.text = team1Title;
+		Team2RealTimeScorePanelScore.text = team2Title;
+	}
+
+	void UpdateTimeLabel(){
+		int minute = (int)countDown / 60;
+		int second = (int)countDown % 60;
+		timeLabel.text = minute.ToString ("00") + ":" + second.ToString ("00");
+	}
+
+	void CheckPlayerConnected(){
+		if (countDown <=0.0f || loadedPlayerNum == PhotonNetwork.playerList.Length) {
+			startTimer = PhotonNetwork.time;								
+			photonView.RPC ("StartGame",PhotonTargets.All,startTimer);		
+		}
+	}
+
+	[PunRPC]
+	void StartGame(double timer){
+		SetTime(timer,gamePlayingTime);
+		gm.state = GameState.Playing;
+		InstantiatePlayer ();		
+		AudioSource.PlayClipAtPoint(gameStartAudio, localPlayer.transform.position);
+	}
 
 
 	
