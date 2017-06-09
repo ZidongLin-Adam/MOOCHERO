@@ -13,12 +13,29 @@ public class GameManager : PunBehaviour {
 		GameLose,			
 		Tie};			
 	public GameState state = GameState.PreStart;
-
 	public float checkplayerTime = 5.0f;		
 	public float gamePlayingTime = 600.0f;	
 	public float gameOverTime = 10.0f;		
 	public float spawnTime = 5.0f;				
 	public int targetScore = 50;				
+	public Text timeLabel;					
+	public Text targetScoreLabel;			
+	public Text Team1RealTimeScorePanelScore;
+	public Text Team2RealTimeScorePanelScore;
+
+	public GameObject scorePanel;			
+	public Text teamOneTotal;					
+	public Text teamTwoTotal;				
+	public GameObject[] teamOneScorePanel;	
+	public GameObject[] teamTwoScorePanel;	
+	public Text gameResult;					
+	public Slider hpSlider;						
+
+	Camera mainCamera;
+	GameObject localPlayer = null;
+	ExitGames.Client.Photon.Hashtable playerCustomProperties;
+	PlayerHealth playerHealth;
+
 
 	void Start () {
 		gm = GetComponent<GameManager> ();	
@@ -96,6 +113,16 @@ public class GameManager : PunBehaviour {
 			break;
 		}
 	}
+
+	public override void OnPhotonPlayerDisconnected(PhotonPlayer other){
+		if (state != GameState.Playing)		
+			return;
+		if (PhotonNetwork.isMasterClient) {
+			CheckTeamNumber ();				
+			photonView.RPC ("UpdateScores", PhotonTargets.All, currentScoreOfTeam1, currentScoreOfTeam2);
+		}
+	}
+
 	void CheckTeamNumber(){
 		PhotonPlayer[] players = PhotonNetwork.playerList;	
 		int teamOneNum = 0, teamTwoNum = 0;						
@@ -145,11 +172,45 @@ public class GameManager : PunBehaviour {
 	}
 
 
-	
+	[PunRPC]
+	void SetTime(double sTime,float dTime){
+		startTimer = sTime;
+		endTimer = sTime + dTime;
+	}
+
+	void InstantiatePlayer(){
+		playerCustomProperties= PhotonNetwork.player.customProperties;	
+		if (playerCustomProperties ["Team"].ToString ().Equals ("Team1")) {	
+			localPlayer = PhotonNetwork.Instantiate ("EthanPlayer", 
+				teamOneSpawnTransform [(int)playerCustomProperties ["TeamNum"]].position, Quaternion.identity, 0);
+		}
+		else if (PhotonNetwork.player.customProperties ["Team"].ToString ().Equals ("Team2")) {
+			localPlayer = PhotonNetwork.Instantiate ("RobotPlayer", 
+				teamTwoSpawnTransform [(int)playerCustomProperties ["TeamNum"]].position, Quaternion.identity, 0);
+		}
+		localPlayer.GetComponent<PlayerMove> ().enabled = true;				
+		PlayerShoot playerShoot = localPlayer.GetComponent<PlayerShoot> ();		
+		playerHealth = localPlayer.GetComponent<PlayerHealth> ();			
+		hpSlider.maxValue = playerHealth.maxHP;								
+		hpSlider.minValue = 0;
+		hpSlider.value = playerHealth.currentHP;
+		Transform tempTransform = localPlayer.transform;
+		mainCamera.transform.parent = tempTransform;						
+		mainCamera.transform.localPosition = playerShoot.shootingPosition;		
+		mainCamera.transform.localRotation = Quaternion.identity;			
+		for (int i = 0; i < tempTransform.childCount; i++) {				
+			if (tempTransform.GetChild (i).name.Equals ("Gun")) {
+				tempTransform.GetChild (i).parent = mainCamera.transform;
+				break;
+			}
+		}
+	}
 
 	public void localPlayerAddHealth(int points){
 		PlayerHealth ph = localPlayer.GetComponent<PlayerHealth> ();
 		ph.requestAddHP (points);
 	}
-	
+	public override void OnConnectionFail(DisconnectCause cause){
+		PhotonNetwork.LoadLevel ("GameLobby");
+	}
 }
