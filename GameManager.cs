@@ -13,6 +13,8 @@ public class GameManager : PunBehaviour {
 		GameLose,			
 		Tie};			
 	public GameState state = GameState.PreStart;
+	public Transform[] teamOneSpawnTransform;	
+	public Transform[] teamTwoSpawnTransform;	
 	public float checkplayerTime = 5.0f;		
 	public float gamePlayingTime = 600.0f;	
 	public float gameOverTime = 10.0f;		
@@ -31,6 +33,13 @@ public class GameManager : PunBehaviour {
 	public Text gameResult;					
 	public Slider hpSlider;						
 
+	double startTimer = 0;		
+	double endTimer = 0;		
+	double countDown = 0;		
+	int loadedPlayerNum = 0;	
+	int currentScoreOfTeam1 = 0;
+	int currentScoreOfTeam2 = 0;
+	const float photonCircleTime = 4294967.295f;
 	Camera mainCamera;
 	GameObject localPlayer = null;
 	ExitGames.Client.Photon.Hashtable playerCustomProperties;
@@ -206,6 +215,48 @@ public class GameManager : PunBehaviour {
 		}
 	}
 
+	[PunRPC]
+	void UpdateScores(int teamOneScore,int teamTwoScore){
+		foreach (GameObject go in teamOneScorePanel)
+			go.SetActive (false);
+		foreach (GameObject go in teamTwoScorePanel)
+			go.SetActive (false);
+		currentScoreOfTeam1 = teamOneScore;		
+		currentScoreOfTeam2 = teamTwoScore;
+		PhotonPlayer[] players = PhotonNetwork.playerList;
+		List<PlayerInfo> teamOne = new List<PlayerInfo>();
+		List<PlayerInfo> teamTwo = new List<PlayerInfo>();
+		PlayerInfo tempPlayer;
+		foreach (PhotonPlayer p in players) {
+			tempPlayer = new PlayerInfo (p.name, (int)p.customProperties ["Score"]);
+			if (p.customProperties ["Team"].ToString () == "Team1")
+				teamOne.Add (tempPlayer);
+			else
+				teamTwo.Add (tempPlayer);
+		}
+
+		teamOne.Sort ();
+		teamTwo.Sort ();
+		Text[] texts;
+		int length = teamOne.Count;
+	
+		for (int i = 0; i < length; i++) {
+			texts = teamOneScorePanel [i].GetComponentsInChildren<Text> ();
+			texts [0].text = teamOne [i].playerName;
+			texts [1].text = teamOne [i].playerScore.ToString();
+			teamOneScorePanel [i].SetActive (true);
+		}
+		length = teamTwo.Count;
+		for (int i = 0; i < length; i++) {
+			texts = teamTwoScorePanel [i].GetComponentsInChildren<Text> ();
+			texts [0].text = teamTwo [i].playerName;
+			texts [1].text = teamTwo [i].playerScore.ToString();
+			teamTwoScorePanel [i].SetActive (true);
+		}
+		teamOneTotal.text = "Team1：" + currentScoreOfTeam1.ToString ();
+		teamTwoTotal.text = "Team2：" + currentScoreOfTeam2.ToString ();
+		UpdateRealTimeScorePanel();	
+	}
 	public void localPlayerAddHealth(int points){
 		PlayerHealth ph = localPlayer.GetComponent<PlayerHealth> ();
 		ph.requestAddHP (points);
