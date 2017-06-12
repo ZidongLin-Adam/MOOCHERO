@@ -32,6 +32,10 @@ public class GameManager : PunBehaviour {
 	public GameObject[] teamTwoScorePanel;	
 	public Text gameResult;					
 	public Slider hpSlider;						
+	public AudioClip gameStartAudio;		
+	public AudioClip gameWinAudio;				
+	public AudioClip gameLoseAudio;			
+	public AudioClip tieAudio;				
 
 	double startTimer = 0;		
 	double endTimer = 0;		
@@ -215,6 +219,20 @@ public class GameManager : PunBehaviour {
 		}
 	}
 
+	public void AddScore(int killScore, PhotonPlayer p){
+		if (!PhotonNetwork.isMasterClient)	
+			return;
+		int score = (int)p.customProperties ["Score"];		
+		score += killScore;									
+		playerCustomProperties = new ExitGames.Client.Photon.Hashtable{ { "Score",score } };
+		p.SetCustomProperties (playerCustomProperties);
+		if (p.customProperties ["Team"].ToString () == "Team1")
+			currentScoreOfTeam1 += killScore;		
+		else
+			currentScoreOfTeam2 += killScore;	
+		photonView.RPC ("UpdateScores",PhotonTargets.All,currentScoreOfTeam1,currentScoreOfTeam2);
+	}
+
 	[PunRPC]
 	void UpdateScores(int teamOneScore,int teamTwoScore){
 		foreach (GameObject go in teamOneScorePanel)
@@ -257,6 +275,35 @@ public class GameManager : PunBehaviour {
 		teamTwoTotal.text = "Team2：" + currentScoreOfTeam2.ToString ();
 		UpdateRealTimeScorePanel();	
 	}
+
+	[PunRPC]
+	void EndGame(string winTeam,double timer){
+		
+		if (winTeam != "Tie")
+			gameResult.text = winTeam + " Wins!";
+		if (winTeam == "Tie") 		
+		{	
+			gm.state = GameState.Tie;
+			AudioSource.PlayClipAtPoint (tieAudio, localPlayer.transform.position);	
+			gameResult.text = "Tie!";
+		} 
+		else if (winTeam == PhotonNetwork.player.customProperties ["Team"].ToString ()) 
+		{
+			gm.state = GameState.GameWin;	
+			AudioSource.PlayClipAtPoint (gameWinAudio,localPlayer.transform.position);
+		} 
+		else 
+		{
+			gm.state = GameState.GameLose;	
+
+			AudioSource.PlayClipAtPoint (gameLoseAudio, localPlayer.transform.position);
+		}
+
+		scorePanel.SetActive(true);		
+		SetTime (timer, gameOverTime);	
+	}
+
+
 	public void localPlayerAddHealth(int points){
 		PlayerHealth ph = localPlayer.GetComponent<PlayerHealth> ();
 		ph.requestAddHP (points);
