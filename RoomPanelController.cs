@@ -93,4 +93,49 @@ public class RoomPanelController : PunBehaviour {
 		}
 	}
 
+	void ReadyButtonControl(){
+		if (PhotonNetwork.isMasterClient) {									
+			readyButton.GetComponentInChildren<Text> ().text = "开始游戏";	
+			readyButton.onClick.RemoveAllListeners ();						
+			readyButton.onClick.AddListener (delegate() {					
+				ClickStartGameButton ();								
+			});
+		} else {															
+			if((bool)PhotonNetwork.player.customProperties["isReady"])		
+				readyButton.GetComponentInChildren<Text> ().text = "取消准备";		
+			else 
+				readyButton.GetComponentInChildren<Text> ().text = "准备";
+			readyButton.onClick.RemoveAllListeners ();						
+			readyButton.onClick.AddListener (delegate() {					
+				ClickReadyButton ();										
+			});
+		}
+	}
+
+	
+	public void ClickReadyButton(){
+		bool isReady = (bool)PhotonNetwork.player.customProperties ["isReady"];				
+		costomProperties = new ExitGames.Client.Photon.Hashtable (){ { "isReady",!isReady } };
+		PhotonNetwork.player.SetCustomProperties (costomProperties);
+		Text readyButtonText = readyButton.GetComponentInChildren<Text> ();
+		if(isReady)readyButtonText.text="准备";	
+		else readyButtonText.text="取消准备";
+	}
+
+
+	public void ClickStartGameButton(){
+		foreach (PhotonPlayer p in PhotonNetwork.playerList) {	
+			if (p.isLocal) continue;								
+			if ((bool)p.customProperties ["isReady"] == false) {	
+				promptMessage.text = "有人未准备，游戏无法开始";	
+				return;											
+			}
+		}
+		promptMessage.text = "";									
+		PhotonNetwork.room.open = false;							
+		pView.RPC ("LoadGameScene", PhotonTargets.All, "GameScene");
+	}
+
+
+	
 }
