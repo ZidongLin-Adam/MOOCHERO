@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityStandardAssets.CrossPlatformInput;
 
-public class PlayerMove : MonoBehaviour
+public class PlayerTPMove : MonoBehaviour
 {
 
     public float WalkSpeed = 2.0f;
