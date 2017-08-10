@@ -28,8 +28,7 @@ public class LoginAccountController: MonoBehaviour {
 
     //“登录”按钮响应事件
 	public void ClickLoginButton(){
-        /* 学生作业：实现玩家账号/邮箱登录的功能
-         * 作业提示：
+        /* 实现玩家账号/邮箱登录的功能
          * 首先，启用UI，提示玩家账号正在登录
          * 其次在游戏客户端检测一些简单的非法输入
          * 最后，使用PlayFab的Client API实现玩家账号/邮箱登录
