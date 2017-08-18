@@ -2,15 +2,18 @@
 using System.Collections;
 using UnityEngine.UI;
 using Photon;
+using PlayFab;
+using PlayFab.ClientModels;
 
-public class LobbyPanelController : PunBehaviour {
+public class LobbyPanelController: PunBehaviour {
 
 	public GameObject loginPanel;			//游戏登录面板
-	public GameObject lobbyPanel;			//游戏大厅面板
-	public GameObject userMessage;			//玩家昵称信息
+	public GameObject mainPanel;			//游戏大厅面板
 	public Button backButton;				//返回按钮
-	public GameObject lobbyLoadingLabel;	//游戏大厅加载提示信息
-	public GameObject roomLoadingLabel;		//游戏房间加载提示信息
+    public Text currentPanel;
+
+	public GameObject lobbyLoadingWindow;	//游戏大厅加载提示信息
+	public GameObject roomLoadingWindow;		//游戏房间加载提示信息
 	public GameObject roomMessagePanel;		//房间信息面板
 	public Button randomJoinButton;			//"随机进入房间"按钮
 	public GameObject previousButton;		//"上一页"按钮
@@ -22,22 +25,15 @@ public class LobbyPanelController : PunBehaviour {
 	private RoomInfo[] roomInfo;			//游戏大厅房间列表信息
 	private int currentPageNumber;			//当前房间页
 	private int maxPageNumber;				//最大房间页
-	private int roomPerPage = 4;			//每页显示房间个数
+	private int roomPerPage;			    //每页显示房间个数
 	private GameObject[] roomMessage;		//游戏房间信息
 
 	//当游戏大厅面板启用时调用，初始化信息
 	void OnEnable(){
-		currentPageNumber = 1;				//初始化当前房间页
-		maxPageNumber = 1;					//初始化最大房间页	
-		lobbyLoadingLabel.SetActive (true);	//启用游戏大厅加载提示信息
-		roomLoadingLabel.SetActive (false);	//禁用游戏房间加载提示信息
-		if(createRoomPanel!=null)
-			createRoomPanel.SetActive (false);	//禁用创建房间面板
-
+        currentPanel.text = "大 厅";
 		//获取房间信息面板
 		RectTransform rectTransform = roomMessagePanel.GetComponent<RectTransform> ();
 		roomPerPage = rectTransform.childCount;		//获取房间信息面板的条目数
-
 		//初始化每条房间信息条目
 		roomMessage = new GameObject[roomPerPage];	
 		for (int i = 0; i < roomPerPage; i++) {
@@ -45,29 +41,40 @@ public class LobbyPanelController : PunBehaviour {
 			roomMessage [i].SetActive (false);			//禁用房间信息条目
 		}
 
-		backButton.onClick.RemoveAllListeners ();		//移除返回按钮绑定的所有监听事件
+		currentPageNumber = 1;					//初始化当前房间页
+		//maxPageNumber = 1;				    //初始化最大房间页	
+		//pageMessage.text = currentPageNumber.ToString () + "/" + maxPageNumber.ToString ();	//更新房间页数信息的显示
+		OnReceivedRoomListUpdate();
+
+		//if(PhotonNetwork.connectionStateDetailed != PeerState.JoinedLobby)
+        if(!PhotonNetwork.insideLobby)
+			lobbyLoadingWindow.SetActive (true);	//启用游戏大厅加载提示信息
+		else lobbyLoadingWindow.SetActive (false);
+		roomLoadingWindow.SetActive (false);		//禁用游戏房间加载提示信息
+		if (createRoomPanel != null)
+			createRoomPanel.SetActive (false);  //禁用创建房间面板
+        if (roomPanel != null)
+            roomPanel.SetActive(false);         //禁用游戏房间面板
+
+        backButton.onClick.RemoveAllListeners ();		//移除返回按钮绑定的所有监听事件
 		backButton.onClick.AddListener (delegate() {	//为返回按钮绑定新的监听事件
 			PhotonNetwork.Disconnect();					//断开客户端与Photon服务器的连接
 			loginPanel.SetActive(true);					//启用游戏登录面板
-			lobbyPanel.SetActive(false);				//禁用游戏大厅面板
-			userMessage.SetActive (false);				//禁用玩家昵称信息
-			backButton.gameObject.SetActive (false);	//禁用返回按钮
+			mainPanel.SetActive(false);					//禁用游戏大厅面板
 		});
-		if(roomPanel!=null)
-			roomPanel.SetActive (false);				//禁用游戏房间面板
 	}
 
 	/**覆写IPunCallback回调函数，当玩家进入游戏大厅时调用
 	 * 禁用游戏大厅加载提示
 	 */
 	public override void OnJoinedLobby(){
-		lobbyLoadingLabel.SetActive (false);
+		lobbyLoadingWindow.SetActive (false);
 	}
 	/**覆写IPunCallback回调函数，当玩家进入游戏房间时调用
 	 * 禁用游戏大厅面板，启用游戏房间面板
 	 */
 	public override void OnJoinedRoom(){
-		lobbyPanel.SetActive (false);
+		gameObject.SetActive (false);
 		roomPanel.SetActive (true);
 	}
 
@@ -106,31 +113,34 @@ public class LobbyPanelController : PunBehaviour {
 			end = currentPageNumber * roomPerPage;
 		else
 			end = roomInfo.Length;
-
 		//依次显示每条房间信息
 		for (i = start,j = 0; i < end; i++,j++) {
 			RectTransform rectTransform = roomMessage [j].GetComponent<RectTransform> ();
 			string roomName = roomInfo [i].name;	//获取房间名称
-			rectTransform.GetChild (0).GetComponent<Text> ().text = (i + 1).ToString ();	//显示房间序号
-			rectTransform.GetChild (1).GetComponent<Text> ().text = roomName;				//显示房间名称
-			rectTransform.GetChild (2).GetComponent<Text> ().text 						
-				= roomInfo [i].playerCount + "/" + roomInfo [i].maxPlayers;					//显示房间人数
-			Button button = rectTransform.GetChild (3).GetComponent<Button> ();				//获取"进入房间"按钮组件
-			//如果游戏房间人数已满，或者游戏房间的Open属性为false（房间内游戏已开始），表示房间无法加入，禁用"进入房间"按钮
-			if (roomInfo [i].playerCount == roomInfo [i].maxPlayers || roomInfo [i].open == false)
-				button.gameObject.SetActive (false);
-			//如果房间可以加入，启用"进入房间"按钮，给按钮绑定新的监听事件，加入此房间
-			else {
-				button.gameObject.SetActive (true);
-				button.onClick.RemoveAllListeners ();
-				button.onClick.AddListener (delegate() {
-					ClickJoinRoomButton (roomName);
-				});
-			}
+            Text[] texts = roomMessage[j].GetComponentsInChildren<Text>();
+            texts[0].text = (i + 1).ToString();
+            texts[1].text = roomName;
+            texts[2].text = roomInfo[i].playerCount + "/" + roomInfo[i].maxPlayers;
+
+            Button button = rectTransform.GetComponent<Button>();
+            //Button button = rectTransform.GetChild (3).GetComponent<Button> ();				//获取"进入房间"按钮组件
+            //如果游戏房间人数已满，或者游戏房间的Open属性为false（房间内游戏已开始），表示房间无法加入，禁用"进入房间"按钮
+            if (roomInfo[i].playerCount == roomInfo[i].maxPlayers || roomInfo[i].open == false)
+                button.interactable = false;
+            //如果房间可以加入，启用"进入房间"按钮，给按钮绑定新的监听事件，加入此房间
+            else
+            {
+                button.interactable = true;
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(delegate ()
+                {
+                    ClickJoinRoomButton(roomName);
+                });
+            }
 			roomMessage [j].SetActive (true);	//启用房间信息条目
 		}
 		//禁用不显示的房间信息条目
-		while (j < 4) {
+		while (j < roomPerPage) {
 			roomMessage [j++].SetActive (false);
 		}
 	}
@@ -156,7 +166,7 @@ public class LobbyPanelController : PunBehaviour {
 	//"随机进入房间"按钮事件处理函数，玩家随机加入大厅中的房间，启用游戏房间加载提示信息
 	public void ClickRandomJoinButton(){
 		PhotonNetwork.JoinRandomRoom ();
-		roomLoadingLabel.SetActive (true);
+		roomLoadingWindow.SetActive (true);
 	}
 	//"上一页"按钮事件处理函数
 	public void ClickPreviousButton(){
@@ -175,6 +185,6 @@ public class LobbyPanelController : PunBehaviour {
 	//"进入房间"按钮事件处理函数
 	public void ClickJoinRoomButton(string roomName){
 		PhotonNetwork.JoinRoom(roomName);	//根据房间名加入游戏房间
-		roomLoadingLabel.SetActive (true);	//启用房间加载提示信息
+		roomLoadingWindow.SetActive (true);	//启用房间加载提示信息
 	}
 }
