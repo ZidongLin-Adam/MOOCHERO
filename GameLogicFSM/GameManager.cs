@@ -1,357 +1,383 @@
-﻿using UnityEngine;
+﻿/*
+ * 
+ * 描述：游戏管理器 管理游戏流程以及UI
+ * 时间：2016.9.29
+ * 
+ */
+using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
 using Photon;
+using System.Collections.Generic;
 using UnityEngine.UI;
-public class GameManager : PunBehaviour {
-	public static GameManager gm;		//GameManager静态实例
+public enum GameResult { none, lose, tie, win }; //游戏结局枚举，分别代表无意义（初始化），失败，平手，胜利
+public class GameManager : PunBehaviour
+{
+    //所有的状态机实例表 可以通过名字查找
+    [HideInInspector]public Dictionary<string, BaseGLStateMachine> stateMachineMap;
+    //游戏状态执行队列 队列内的状态实例会依次执行（在不清空的前提下）
+    [HideInInspector]public Queue<string> gameStateQueue;
 
-	public enum GameState{		//游戏状态枚举
-		PreStart,				//游戏开始前
-		Playing,				//游戏进行中
-		GameWin,				//游戏胜利
-		GameLose,				//游戏失败
-		Tie};					//平手
-	public GameState state = GameState.PreStart;	//初始化游戏状态
-	public Transform[] teamOneSpawnTransform;		//队伍1出生位置
-	public Transform[] teamTwoSpawnTransform;		//队伍2出生位置
-	public float checkplayerTime = 5.0f;			//检查玩家加载场景时间
-	public float gamePlayingTime = 600.0f;			//游戏时间
-	public float gameOverTime = 10.0f;				//游戏结束时间
-	public float spawnTime = 5.0f;					//重生时间
-	public int targetScore = 50;					//目标分数
-	public Text timeLabel;							//倒计时时间显示
-	public Text targetScoreLabel;					//目标分数显示
+    public static GameManager gm;
+    
+    //下面两个属性可以通过在Inspector视图中指定状态机名
+    //在inspector视图中添加所有状态机名
+    public List<string> AllStateMachineName = new List<string>();
+    //在inspector试图中添加初始化的状态机名
+    public List<string> InitStateMachineList = new List<string>();
 
-	//实时计分板
-	public Text Team1RealTimeScorePanelScore;
-	public Text Team2RealTimeScorePanelScore;
+    public BaseGLStateMachine curGLStatetMachine; //当前执行的状态机
 
-	public GameObject scorePanel;				//玩家得分榜
-	public Text teamOneTotal;					//队伍1总分
-	public Text teamTwoTotal;					//队伍2总分
-	public GameObject[] teamOneScorePanel;		//队伍1成员得分面板
-	public GameObject[] teamTwoScorePanel;		//队伍2成员得分面板
-	public Text gameResult;						//游戏结束信息
-	public Slider hpSlider;						//玩家血条
-	public AudioClip gameStartAudio;			//游戏开始音效
-	public AudioClip gameWinAudio;				//游戏胜利音效
-	public AudioClip gameLoseAudio;				//游戏失败音效
-	public AudioClip tieAudio;					//平手音效
 
-	double startTimer = 0;			//倒计时开始时间
-	double endTimer = 0;			//倒计时结束时间
-	double countDown = 0;			//倒计时
-	int loadedPlayerNum = 0;		//已加载场景的玩家个数
-	int currentScoreOfTeam1 = 0;	//队伍1得分
-	int currentScoreOfTeam2 = 0;	//队伍2得分
-	const float photonCircleTime = 4294967.295f;	//Photon服务器循环时间
+    public float spawnTime = 5.0f;					//重生时间
 
-	Camera mainCamera;
-	GameObject localPlayer = null;
-	ExitGames.Client.Photon.Hashtable playerCustomProperties;
-	PlayerHealth playerHealth;
+    public int loadedPlayerNum; //已读取完毕的玩家数量
+    public GameResult m_gameResult; //游戏结果
 
-	//初始化
+    public int currentScoreOfAttackerTeam = 0;//进攻者阵营得分
+    public int currentScoreOfDefenderTeam = 0;	//防守者阵营得分
+
+    public Transform[] attackerTeamSpawnTransform;		//进攻阵营出生位置
+    public Transform[] defenderTeamSpawnTransform;		//防守阵营出生位置
+
+    public int targetScore = 2;	//目标分数
+
+    public GameUIController UIController; //游戏场景UI控制器
+
+    public AudioClip gameStartAudio;			//游戏开始音效
+    public AudioClip gameLoseAudio;
+    public AudioClip gameTieAudio;
+    public AudioClip gameWinAudio;
+
+
+    public bool lockCursor = true;      //是否在游戏进行时锁定鼠标
+    Camera mainCamera; //主摄像机
+    public GameObject localPlayer = null; //本地玩家
+    ExitGames.Client.Photon.Hashtable playerCustomProperties;//玩家属性
+    public PlayerHealth playerHealth;
+    [HideInInspector]
+    public double remainTime;
+    [HideInInspector]
+    public string winTeam;
+    
+    private ZombieGenerator m_zombieGenerator;//生成器实例
+    public ZombieGenerator zombieGenerator  //生成器访问器
+    {
+        get {
+                return m_zombieGenerator;
+        }
+    }
+    /*
+     *学生作业提示：添加骷髅兵必要组件 完成并完成生成池对骷髅兵调度
+     *模仿僵尸组件添加骷髅并组件  模仿僵尸生成池机制对骷髅兵进行调度
+     */
+    private ZombieGenerator m_skeletonGenerator;//生成器实例
+    public ZombieGenerator skeletonGenerator  //生成器访问器
+    {
+        get
+        {
+            return m_skeletonGenerator;
+        }
+    }
+
+
+
+    [PunRPC]
+    void ConfirmLoad() //玩家读取完毕时调用
+    {
+        loadedPlayerNum++;
+    }
+    //初始化玩家实例
+    public void InstantiatePlayer()
+    {
+        var playerCustomProperties = PhotonNetwork.player.customProperties;	//获取玩家自定义属性
+        //如果玩家属于进攻阵营，生成AttackerPlayer对象
+        if (playerCustomProperties["Team"].ToString().Equals("AttackerTeam"))
+        {
+            localPlayer = PhotonNetwork.Instantiate("AttackerPlayer",
+                attackerTeamSpawnTransform[(int)playerCustomProperties["TeamNum"]].position, Quaternion.identity, 0);
+        }
+        //如果玩家属于防守阵营，生成DefenderPlayer对象
+        else if (PhotonNetwork.player.customProperties["Team"].ToString().Equals("DefenderTeam"))
+        {
+            localPlayer = PhotonNetwork.Instantiate("DefenderPlayer",
+                defenderTeamSpawnTransform[(int)playerCustomProperties["TeamNum"]].position, Quaternion.identity, 0);
+        }
+        localPlayer.GetComponent<PlayerMove>().enabled = true;					//启用PlayerMove脚本，使玩家对象可以被本地客户端操控
+        PlayerShoot playerShoot = localPlayer.GetComponent<PlayerShoot>();		//获取玩家对象的PlayerShoot脚本
+        playerHealth = localPlayer.GetComponent<PlayerHealth>();				//获取玩家对象的PlayerHealth脚本
+
+        Transform tempTransform = localPlayer.transform;
+        mainCamera.transform.parent = tempTransform;							//将场景中的摄像机设为玩家对象的子对象
+        mainCamera.transform.localPosition = playerShoot.shootingPosition;		//设置摄像机的位置，为PlayerShoot脚本中的射击起始位置
+        mainCamera.transform.localRotation = Quaternion.identity;				//设置摄像机的朝向
+
+        UIController.initPlayerHpLabel(playerHealth.maxHP, 0);
+        UIController.updatePlayerHPLabel(playerHealth.currentHP);
+    }
+    //状态机发生变化时调用
+    [PunRPC]
+    void stateMachineChange()
+    {
+        if (curGLStatetMachine != null){
+            gameStateQueue.Dequeue();  //当前状态机移除队列 并执行exit函数
+            curGLStatetMachine.Exit();
+        }
+        if (gameStateQueue.Count == 0)
+            return;
+        curGLStatetMachine = stateMachineMap[gameStateQueue.Peek()]; //从队列中找到新的状态机
+        if (curGLStatetMachine != null)
+            curGLStatetMachine.Enter();//执行enter函数
+    }
+    //新增 强制状态机转换 会清除之前的状态机队列
+    [PunRPC]
+    void stateMachineChangeForce(string stateMachineName)
+    {
+        if (stateMachineName == null || stateMachineName == "")
+            return;
+        gameStateQueue.Clear(); //清空队列
+        if (curGLStatetMachine != null)
+            curGLStatetMachine.Exit();
+        curGLStatetMachine = stateMachineMap[stateMachineName];
+        if (curGLStatetMachine != null)
+            curGLStatetMachine.Enter();//强制执行新的状态机
+    }
+    //新增 在状态机内利用RPC调用 通知战斗结果
+    [PunRPC]
+    void notifyGameResult(string winsTeam)
+    {
+        winTeam = winsTeam;
+        if (winsTeam == PhotonNetwork.player.customProperties["Team"].ToString())
+            m_gameResult = GameResult.win;
+        else if (winsTeam == "Tie")
+            m_gameResult = GameResult.tie;
+        else
+            m_gameResult = GameResult.lose;
+    }
+    //启动时调用
 	void Start () {
-		gm = GetComponent<GameManager> ();		//初始化GameManager静态实例gm
-		mainCamera = Camera.main;				//获取摄像机
-		photonView.RPC ("ConfirmLoad", PhotonTargets.All);				//使用RPC,告知所有玩家有一名玩家已成功加载场景
-		playerCustomProperties = new ExitGames.Client.Photon.Hashtable{ { "Score",0 } };	//初始化玩家得分
-		PhotonNetwork.player.SetCustomProperties (playerCustomProperties);	
-		targetScoreLabel.text = "目标得分：" + targetScore.ToString ();	//显示目标分数
-		//初始化队伍得分
-		currentScoreOfTeam1 = 0;										
-		currentScoreOfTeam2 = 0;
-		UpdateScores (currentScoreOfTeam1, currentScoreOfTeam2);		//更新玩家得分榜
-		if (PhotonNetwork.isMasterClient)								//MasterClient设置游戏开始倒计时
-			photonView.RPC ("SetTime", PhotonTargets.All, PhotonNetwork.time, checkplayerTime);
-		gameResult.text = "";					//清空游戏结果
-		scorePanel.SetActive (false);			//禁用玩家得分榜
+        UIController = GetComponent<GameUIController>();
+        gm = GetComponent<GameManager>();		//初始化GameManager静态实例gm
+        mainCamera = Camera.main;				//获取摄像机
+        stateMachineMap = new Dictionary<string, BaseGLStateMachine>();
+        gameStateQueue = new Queue<string>();
+
+        playerCustomProperties = new ExitGames.Client.Photon.Hashtable { { "Score", 0 }, { "Death", 0 } };  //初始化玩家得分
+
+        PhotonNetwork.player.SetCustomProperties(playerCustomProperties);
+
+        //初始化队伍得分
+        currentScoreOfAttackerTeam = 0;
+        currentScoreOfDefenderTeam = 0;
+
+        //初始化状态机映射和队列
+        initStateMachineMapAndQueue();
+        //将队列首的状态机设置为当前状态机
+        curGLStatetMachine = stateMachineMap[gameStateQueue.Peek()];
+        curGLStatetMachine.Enter();
+        m_gameResult = GameResult.none;
+        winTeam = null;
+#if (!UNITY_ANDROID)
+        UIController.setCursorState(lockCursor);
+#endif
 	}
+    //根据Inspector视图中指定的全部状态机以及初始状态机列表生成实际游戏所需状态机
+    private void initStateMachineMapAndQueue()
+    {
+        //将Inspector中设置的值写入GameManager中
+        foreach (var name in AllStateMachineName)
+        {
+            var instance = GLStateMachineGenerator.getGLStateMachineByName(name, this);
+            if (instance != null)
+                stateMachineMap.Add(name, instance);
+        }
+        foreach (var name in InitStateMachineList)
+        {
+            gameStateQueue.Enqueue(name);
+        }
+        AllStateMachineName.Clear();
+        InitStateMachineList.Clear();
+    }
+    //初始化怪物生成池
+    public void initMonsterGenerator()
+    {
+        GameObject ob;
+        if (PhotonNetwork.isMasterClient)
+        {
+            ob = PhotonNetwork.InstantiateSceneObject("ZombieGenerator", Vector3.zero, Quaternion.identity, 0, null);
+            m_zombieGenerator = ob.GetComponent<ZombieGenerator>();
+            m_zombieGenerator.initGenerator();
+            photonView.RPC("getGeneratorId", PhotonTargets.All, ob.GetPhotonView().viewID, "Zombie");
 
-	//RPC函数，增加成功加载场景的玩家个数
-	[PunRPC]
-	void ConfirmLoad(){
-		loadedPlayerNum++;
+            /* 学生作业：
+             * 添加骷髅兵 完成并完成生成池对骷髅兵调度（模仿僵尸生成池）
+             */
+            ob = PhotonNetwork.InstantiateSceneObject("SkeletonGenerator", Vector3.zero, Quaternion.identity, 0, null);
+            m_skeletonGenerator = ob.GetComponent<ZombieGenerator>();
+            m_skeletonGenerator.initGenerator();
+            photonView.RPC("getGeneratorId", PhotonTargets.All, ob.GetPhotonView().viewID, "Skeleton");
+        }
+    }
+    [PunRPC]
+    void getGeneratorId(int id,string type)//通过PhotonView的ID使得非主节点获取到生成池实例
+    {
+        if (PhotonNetwork.isMasterClient)
+            return;
+        var ob = PhotonView.Find(id);
+        if (type == "Zombie")
+            this.m_zombieGenerator = ob.GetComponent<ZombieGenerator>();
+        else if (type == "Skeleton")
+        {
+            this.m_skeletonGenerator = ob.GetComponent<ZombieGenerator>();
+        }
+         /* 学生作业：
+          * 添加骷髅兵 完成并完成生成池对骷髅兵调度（模仿僵尸生成池）
+          */
+    }
+	//每帧执行 主要是执行状态机的update函数 并对状态机是否达到结束状态进行检测 结束的话则需要进行状态机变更
+	void Update () {
+		UIController.SetPintText (PhotonNetwork.GetPing().ToString());
+        if (curGLStatetMachine != null)
+        {
+            curGLStatetMachine.Update();
+            if (PhotonNetwork.isMasterClient && curGLStatetMachine.checkEndCondition())
+            {
+                this.photonView.RPC("stateMachineChange", PhotonTargets.All);
+            }
+        }
 	}
+    //检测队伍人数
+    void CheckTeamNumber()
+    {
+        PhotonPlayer[] players = PhotonNetwork.playerList;		//获取房间内玩家列表
+        int attackerNum = 0, defenderNum = 0;
+        foreach (PhotonPlayer p in players)
+        {					//遍历所有玩家，计算两队人数
+            if (p.customProperties["Team"].ToString() == "AttackerTeam")
+                attackerNum++;
+            else
+                defenderNum++;
+        }
+        if (attackerNum == 0 || defenderNum == 0)
+        {
+            if (attackerNum == 0)
+                this.photonView.RPC("notifyGameResult", PhotonTargets.All, "DefenderTeam");
+            else
+                this.photonView.RPC("notifyGameResult", PhotonTargets.All, "AttackerTeam");
 
-	//每帧执行一次，更新倒计时，控制游戏状态
-	void Update(){
-		countDown = endTimer - PhotonNetwork.time;	//计算倒计时
-		if (countDown >= photonCircleTime)			//防止entTimer值超过Photon服务器循环时间，确保倒计时能正确结束
-			countDown -= photonCircleTime;
-		UpdateTimeLabel ();							//更新倒计时的显示
+            this.photonView.RPC("stateMachineChangeForce", PhotonTargets.All, "end"); //强制使游戏进入结算状态
+        }
+    }
+    //玩家失去连接执行函数
+    public override void OnPhotonPlayerDisconnected(PhotonPlayer other)
+    {
+        if (PhotonNetwork.isMasterClient && getCurStateName() != "end")
+        {	//MasterClient检查
+            CheckTeamNumber();				//检查两队人数
+        }
+    }
+    //更新死亡数
+    public void UpdateDeath()
+    {
+        int death = (int)PhotonNetwork.player.customProperties["Death"];
+        death += 1;
+        var playerCustomProperties = new ExitGames.Client.Photon.Hashtable { { "Death", death } };
+        PhotonNetwork.player.SetCustomProperties(playerCustomProperties);
+    }
+    /**玩家得分增加函数
+     * 该函数只由MasterClient调用
+     */
+    public void AddScore(int killScore, PhotonPlayer p)
+    {
+        if (!PhotonNetwork.isMasterClient)		//如果函数不是由MasterClient调用，结束函数执行
+            return;
+        int score = (int)p.customProperties["Score"];		//获取击杀者玩家得分
+        score += killScore;									//增加击杀者玩家得分
+        var playerCustomProperties = new ExitGames.Client.Photon.Hashtable { { "Score", score } };
+        p.SetCustomProperties(playerCustomProperties);
+        if (p.customProperties["Team"].ToString() == "AttackerTeam")
+        {
+            currentScoreOfAttackerTeam += killScore;       //增加进攻阵营总分
+        }
+        else
+        {
+            currentScoreOfDefenderTeam += killScore;       //增加防守阵营总分
+        }
+        photonView.RPC("UpdateScores", PhotonTargets.All, currentScoreOfAttackerTeam, currentScoreOfDefenderTeam);
+    }
+    //更细分数
+    [PunRPC]
+    void UpdateScores(int attackerTeamScore, int defenderTeamScore)
+    {
+        UIController.updateTeamScore(attackerTeamScore, defenderTeamScore);
+    }
 
-		//游戏状态控制
-		switch (state) {
-		//如果游戏处于游戏开始前
-		case GameState.PreStart:					
-			if (PhotonNetwork.isMasterClient) {		//MasterClient检查倒计时和场景加载人数，控制游戏开始
-				CheckPlayerConnected ();
-			}
-			break;
-		//如果游戏处于游戏进行中
-		case GameState.Playing:				
-			hpSlider.value = playerHealth.currentHP;			//更新玩家生命值血条的显示
-			#if(!UNITY_ANDROID)
-			scorePanel.SetActive (Input.GetKey (KeyCode.Tab));	//PC使用Tab键显示玩家得分榜
-			#endif
-			if (PhotonNetwork.isMasterClient) {					//MasterClient检查游戏状态
-				if (currentScoreOfTeam1 >= targetScore)			//队伍1达到目标分数，队伍1获胜
-					photonView.RPC ("EndGame", PhotonTargets.All, "Team1",PhotonNetwork.time);
-				else if (currentScoreOfTeam2 >= targetScore)	//队伍2达到目标分数，队伍2获胜
-					photonView.RPC ("EndGame", PhotonTargets.All, "Team2",PhotonNetwork.time);
-				else if (countDown <= 0.0f) {					//游戏倒计时结束，得分高的队伍获胜
-					if (currentScoreOfTeam1 > currentScoreOfTeam2)		
-						photonView.RPC ("EndGame", PhotonTargets.All, 
-							"Team1", PhotonNetwork.time);
-					else if (currentScoreOfTeam1 < currentScoreOfTeam2)
-						photonView.RPC ("EndGame", PhotonTargets.All, 
-							"Team2",PhotonNetwork.time);
-					else                                        //双方得分相同，平手
-						photonView.RPC ("EndGame", PhotonTargets.All, 
-							"Tie",PhotonNetwork.time);
-				}
-			}
-			break;
-		case GameState.GameWin:		//游戏胜利状态，倒计时结束，退出游戏房间
-			if (countDown <= 0)
-				LeaveRoom ();
-			break;
-		case GameState.GameLose:	//游戏结束状态，倒计时结束，退出游戏房间
-			if (countDown <= 0)
-				LeaveRoom ();
-			break;
-		case GameState.Tie:
-			if (countDown <= 0)		//平手状态，倒计时结束，退出游戏房间
-				LeaveRoom ();
-			break;
-		}
-	}
+    //玩家属性更新函数
+    public override void OnPhotonPlayerPropertiesChanged(object[] playerAndUpdatedProps)
+    {
+        UIController.teamScoreListEnable("teamA", false);
+        UIController.teamScoreListEnable("teamB", false);
 
-	/**IPunCallback回调函数，有玩家断开连接时（离开房间）调用
-	 * MasterClient检查双方人数，更新玩家得分榜的显示
-	 */
-	public override void OnPhotonPlayerDisconnected(PhotonPlayer other){
-		if (state != GameState.Playing)		//游戏状态不是游戏进行中，结束函数执行
-			return;
-		if (PhotonNetwork.isMasterClient) {	//MasterClient检查
-			CheckTeamNumber ();				//检查两队人数
-			//更新玩家得分榜
-			photonView.RPC ("UpdateScores", PhotonTargets.All, currentScoreOfTeam1, currentScoreOfTeam2);
-		}
-	}
-
-	/**检查加载场景的玩家个数
-	 * 该函数只由MasterClient调用
-	 */
-	void CheckTeamNumber(){
-		PhotonPlayer[] players = PhotonNetwork.playerList;		//获取房间内玩家列表
-		int teamOneNum = 0, teamTwoNum = 0;						
-		foreach (PhotonPlayer p in players) {					//遍历所有玩家，计算两队人数
-			if (p.customProperties ["Team"].ToString () == "Team1")
-				teamOneNum++;
-			else
-				teamTwoNum++;
-		}
-		//如果有某队伍人数为0，另一队获胜
-		if (teamOneNum == 0)
-			photonView.RPC ("EndGame", PhotonTargets.All, "Team2",PhotonNetwork.time);
-		else if (teamTwoNum == 0)
-			photonView.RPC ("EndGame", PhotonTargets.All, "Team1",PhotonNetwork.time);
-	}
-
-	//显示两队实时分数
-	void UpdateRealTimeScorePanel()
-	{
-		string team1Title = string.Empty;
-		string team2Title = string.Empty;
-
-		team1Title = string.Format("得分：{0}",currentScoreOfTeam1);
-		team2Title = string.Format("得分：{0}",currentScoreOfTeam2);
-
-		Team1RealTimeScorePanelScore.text = team1Title;
-		Team2RealTimeScorePanelScore.text = team2Title;
-	}
-
-	//显示倒计时时间
-	void UpdateTimeLabel(){
-		int minute = (int)countDown / 60;
-		int second = (int)countDown % 60;
-		timeLabel.text = minute.ToString ("00") + ":" + second.ToString ("00");
-	}
-
-	//检查所有玩家是否已经加载场景
-	void CheckPlayerConnected(){
-		if (countDown <=0.0f || loadedPlayerNum == PhotonNetwork.playerList.Length) {	//游戏开始倒计时结束，或者所有玩家加载场景
-			startTimer = PhotonNetwork.time;								//游戏开始时间（使用Photon服务器的时间）
-			photonView.RPC ("StartGame",PhotonTargets.All,startTimer);		//使用RPC，所有玩家开始游戏
-		}
-	}
-
-	//RPC函数，开始游戏
-	[PunRPC]
-	void StartGame(double timer){
-		SetTime(timer,gamePlayingTime);	//设置游戏进行倒计时时间
-		gm.state = GameState.Playing;	//游戏状态切换到游戏进行状态
-		InstantiatePlayer ();			//创建玩家对象
-		AudioSource.PlayClipAtPoint(gameStartAudio, localPlayer.transform.position);	//播放游戏开始音效
-	}
-
-	//RPC函数，设置倒计时时间
-	[PunRPC]
-	void SetTime(double sTime,float dTime){
-		startTimer = sTime;
-		endTimer = sTime + dTime;
-	}
-
-	//生成玩家对象
-	void InstantiatePlayer(){
-		playerCustomProperties= PhotonNetwork.player.customProperties;	//获取玩家自定义属性
-		//如果玩家属于队伍1，生成EthanPlayer对象
-		if (playerCustomProperties ["Team"].ToString ().Equals ("Team1")) {	
-			localPlayer = PhotonNetwork.Instantiate ("EthanPlayer", 
-				teamOneSpawnTransform [(int)playerCustomProperties ["TeamNum"]].position, Quaternion.identity, 0);
-		}
-		//如果玩家属于队伍2，生成RobotPlayer对象
-		else if (PhotonNetwork.player.customProperties ["Team"].ToString ().Equals ("Team2")) {
-			localPlayer = PhotonNetwork.Instantiate ("RobotPlayer", 
-				teamTwoSpawnTransform [(int)playerCustomProperties ["TeamNum"]].position, Quaternion.identity, 0);
-		}
-		localPlayer.GetComponent<PlayerMove> ().enabled = true;					//启用PlayerMove脚本，使玩家对象可以被本地客户端操控
-		PlayerShoot playerShoot = localPlayer.GetComponent<PlayerShoot> ();		//获取玩家对象的PlayerShoot脚本
-		playerHealth = localPlayer.GetComponent<PlayerHealth> ();				//获取玩家对象的PlayerHealth脚本
-		hpSlider.maxValue = playerHealth.maxHP;									//设置显示玩家血量的Slider控件
-		hpSlider.minValue = 0;
-		hpSlider.value = playerHealth.currentHP;
-		Transform tempTransform = localPlayer.transform;
-		mainCamera.transform.parent = tempTransform;							//将场景中的摄像机设为玩家对象的子对象
-		mainCamera.transform.localPosition = playerShoot.shootingPosition;		//设置摄像机的位置，为PlayerShoot脚本中的射击起始位置
-		mainCamera.transform.localRotation = Quaternion.identity;				//设置摄像机的朝向
-		for (int i = 0; i < tempTransform.childCount; i++) {					//将枪械对象设为摄像机的子对象
-			if (tempTransform.GetChild (i).name.Equals ("Gun")) {
-				tempTransform.GetChild (i).parent = mainCamera.transform;
-				break;
-			}
-		}
-	}
-
-	/**玩家得分增加函数
-	 * 该函数只由MasterClient调用
-	 */
-	public void AddScore(int killScore, PhotonPlayer p){
-		if (!PhotonNetwork.isMasterClient)		//如果函数不是由MasterClient调用，结束函数执行
-			return;
-		int score = (int)p.customProperties ["Score"];		//获取击杀者玩家得分
-		score += killScore;									//增加击杀者玩家得分
-		playerCustomProperties = new ExitGames.Client.Photon.Hashtable{ { "Score",score } };
-		p.SetCustomProperties (playerCustomProperties);
-		if (p.customProperties ["Team"].ToString () == "Team1")
-			currentScoreOfTeam1 += killScore;		//增加队伍1总分
-		else
-			currentScoreOfTeam2 += killScore;		//增加队伍2总分
-		//使用RPC，更新所有客户端的玩家得分榜
-		photonView.RPC ("UpdateScores",PhotonTargets.All,currentScoreOfTeam1,currentScoreOfTeam2);
-	}
-
-	//RPC函数，更新玩家得分榜
-	[PunRPC]
-	void UpdateScores(int teamOneScore,int teamTwoScore){
-		//禁用所有显示玩家得分的条目
-		foreach (GameObject go in teamOneScorePanel)
-			go.SetActive (false);
-		foreach (GameObject go in teamTwoScorePanel)
-			go.SetActive (false);
-
-		//更新队伍1、队伍2的总分
-		currentScoreOfTeam1 = teamOneScore;		
-		currentScoreOfTeam2 = teamTwoScore;
-		PhotonPlayer[] players = PhotonNetwork.playerList;	//获取房间内所有玩家的信息
-		List<PlayerInfo> teamOne = new List<PlayerInfo>();
-		List<PlayerInfo> teamTwo = new List<PlayerInfo>();
-		PlayerInfo tempPlayer;
-		//遍历房间内所有玩家，将他们的得分根据他们的队伍放入对应的队伍列表中
-		foreach (PhotonPlayer p in players) {
-			tempPlayer = new PlayerInfo (p.name, (int)p.customProperties ["Score"]);
-			if (p.customProperties ["Team"].ToString () == "Team1")
-				teamOne.Add (tempPlayer);
-			else
-				teamTwo.Add (tempPlayer);
-		}
-		//分别对两队队伍列表排序，按照分数从大到小排序
-		teamOne.Sort ();
-		teamTwo.Sort ();
-		Text[] texts;
-		int length = teamOne.Count;
-		//依次在玩家得分榜显示两队玩家得分，保证得分高的玩家在得分低的玩家之上
-		for (int i = 0; i < length; i++) {
-			texts = teamOneScorePanel [i].GetComponentsInChildren<Text> ();
-			texts [0].text = teamOne [i].playerName;
-			texts [1].text = teamOne [i].playerScore.ToString();
-			teamOneScorePanel [i].SetActive (true);
-		}
-		length = teamTwo.Count;
-		for (int i = 0; i < length; i++) {
-			texts = teamTwoScorePanel [i].GetComponentsInChildren<Text> ();
-			texts [0].text = teamTwo [i].playerName;
-			texts [1].text = teamTwo [i].playerScore.ToString();
-			teamTwoScorePanel [i].SetActive (true);
-		}
-		//显示两队得分
-		teamOneTotal.text = "Team1：" + currentScoreOfTeam1.ToString ();
-		teamTwoTotal.text = "Team2：" + currentScoreOfTeam2.ToString ();
-		UpdateRealTimeScorePanel();		//更新实时得分榜
-	}
-
-	//游戏结束，更改客户端的游戏状态
-	[PunRPC]
-	void EndGame(string winTeam,double timer){
-		//如果两队不是平手，游戏结束信息显示获胜队伍胜利
-		if (winTeam != "Tie")
-			gameResult.text = winTeam + " Wins!";
-		if (winTeam == "Tie") 			//如果两队打平
-		{	
-			gm.state = GameState.Tie;	//游戏状态切换为平手状态
-			AudioSource.PlayClipAtPoint (tieAudio, localPlayer.transform.position);	//播放平手音效
-			gameResult.text = "Tie!";	//游戏结束信息显示"Tie!"表示平手
-		} 
-		else if (winTeam == PhotonNetwork.player.customProperties ["Team"].ToString ()) 	//如果玩家属于获胜队伍
-		{
-			gm.state = GameState.GameWin;		//游戏状态切换为游戏胜利状态
-			//播放游戏胜利音效
-			AudioSource.PlayClipAtPoint (gameWinAudio,localPlayer.transform.position);
-		} 
-		else //如果玩家属于失败队伍
-		{
-			gm.state = GameState.GameLose;		//游戏状态切换为游戏失败状态
-			//播放游戏失败音效
-			AudioSource.PlayClipAtPoint (gameLoseAudio, localPlayer.transform.position);
-		}
-
-		scorePanel.SetActive(true);		//游戏结束后，显示玩家得分榜
-		SetTime (timer, gameOverTime);	//设置游戏结束倒计时时间
-	}
-
-	//本地玩家加分
-	public void localPlayerAddHealth(int points){
-		PlayerHealth ph = localPlayer.GetComponent<PlayerHealth> ();
-		ph.requestAddHP (points);
-	}
-
-	//如果玩家断开与Photon服务器的连接，加载场景GameLobby
-	public override void OnConnectionFail(DisconnectCause cause){
-		PhotonNetwork.LoadLevel ("GameLobby");
-	}
-
-	//显示玩家得分榜，用于移动端的得分榜按钮，代替PC的Tab键
-	public void ShowScorePanel(){
-		scorePanel.SetActive (!scorePanel.activeSelf);
-	}
-
-	//离开房间函数
-	public void LeaveRoom(){
-		PhotonNetwork.LeaveRoom ();				//玩家离开游戏房间
-		PhotonNetwork.LoadLevel ("GameLobby");	//加载场景GameLobby
-	}
+        PhotonPlayer[] players = PhotonNetwork.playerList;  //获取房间内所有玩家的信息
+        List<PlayerInfo> attackerTeam = new List<PlayerInfo>();
+        List<PlayerInfo> defenderTeam = new List<PlayerInfo>();
+        PlayerInfo tempPlayer;
+        //遍历房间内所有玩家，将他们的得分根据他们的队伍放入对应的队伍列表中
+        foreach (PhotonPlayer p in players)
+        {
+            tempPlayer = new PlayerInfo(p.name, (int)p.customProperties["Score"], (int)p.customProperties["Death"]);
+            if (p.customProperties["Team"].ToString() == "AttackerTeam")
+                attackerTeam.Add(tempPlayer);
+            else
+                defenderTeam.Add(tempPlayer);
+        }
+        //分别对两队队伍列表排序，按照分数从大到小排序
+        attackerTeam.Sort();
+        defenderTeam.Sort();
+        UIController.updateTeamScoreListData(attackerTeam, defenderTeam);
+    }
+    //本地玩家加血
+    public void localPlayerAddHealth(int points)
+    {
+        PlayerHealth ph = localPlayer.GetComponent<PlayerHealth>();
+        ph.requestAddHP(points);
+    }
+    //如果玩家断开与Photon服务器的连接，加载场景GameLobby
+    public override void OnConnectionFail(DisconnectCause cause)
+    {
+        PhotonNetwork.LoadLevel("GameLobby");
+    }
+    //显示玩家得分榜，用于移动端的得分榜按钮，代替PC的Tab键
+    public void ShowScorePanel()
+    {
+    }
+    //离开房间函数
+    public void LeaveRoom()
+    {
+        PhotonNetwork.LeaveRoom();				//玩家离开游戏房间
+        PhotonNetwork.LoadLevel("GameLobby");	//加载场景GameLobby
+    }
+    //获取当前状态机名字
+    public string getCurStateName()
+    {
+        return GLStateMachineGenerator.getNameByGLStateMachine(curGLStatetMachine);
+    }
+    //获取本机器的玩家实例
+    public GameObject getLocalPlayer()
+    {
+        return localPlayer;
+    }
+    //通过RPC设置倒计时
+    public void InitCountDown(double endTime)
+    {
+        if (PhotonNetwork.isMasterClient)
+        {
+            photonView.RPC("StartCountDown", PhotonTargets.AllViaServer, endTime);
+        }
+    }
+    //执行状态机中的开始倒计时函数
+    [PunRPC]
+    void StartCountDown(double endTime)
+    {
+        curGLStatetMachine.startCountDown(endTime);
+    }
 }
