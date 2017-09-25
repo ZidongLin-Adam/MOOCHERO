@@ -23,6 +23,10 @@ FPS Game with Network playing
 * README.md
 
 *****************************
+### V1.0.6 Features
+1. Fix the leadPanel display bug
+2. Fix the lack of enemy tag
+
 ### V1.0.0 Features
 1. Network playing support with 2~4 people.
 2. There are two types of playing model, encounter or positional warfare.

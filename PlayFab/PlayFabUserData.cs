@@ -13,6 +13,7 @@ public class PlayFabUserData : MonoBehaviour {
     public static string playFabId = "";        //玩家账号的ID
 	public static string username ="";          //玩家账号的用户名
     public static string email = "";            //玩家账号的绑定邮箱
+    public static string displayName = "";      //玩家账号的用户昵称
 
     public static Dictionary<string, UserDataRecord> userData;  //PlayFab GameManager中存储的玩家自定义数据Player Data
 

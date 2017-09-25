@@ -73,7 +73,8 @@ public class LoginPanelController : MonoBehaviour {
     //玩家昵称设置成功时调用
 	void OnUpdateUserTitleDisplayName(UpdateUserTitleDisplayNameResult result){
 
-        /*  玩家创建账号成功时，为玩家添加默认枪支：AK47
+        /*  学生作业 2-3：玩家创建账号成功时，为玩家添加默认枪支：AK47
+         *  作业提示：
          *  先使用PurchaseItemRequest声明一个道具购买请求，再使用PlayFabClientAPI.PurchaseItem发起道具购买请求
          *  道具购买成功，禁用游戏登录面板，启用游戏主面板（OnPurchaseItemRequest函数）
          *  道具购买失败，在控制台输出失败原因（OnPlayFabError函数）

@@ -46,7 +46,8 @@ public class LeaderboardController : MonoBehaviour {
             leaderboardPanel.SetActive(false);
 		});
     }
-    /* 实现排行榜按钮的响应函数
+    /* 学生作业：实现排行榜按钮的响应函数
+     * 作业提示：
      * 首先，启用leaderboardLoadingLabel，提示排行榜正在加载；
      * 其次，禁用排行榜中的前三名和本地玩家信息面板，在排行榜加载过程中不应该显示这些信息；
      * 接着，设置leaderboardType字段，标志显示的是什么数据的排行榜，在之后的SetLeadboard设置排行榜界面信息时会用到该参数；

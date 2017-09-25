@@ -1,7 +1,6 @@
 ﻿/*
  * 
  * 描述：游戏管理器 管理游戏流程以及UI
- * 时间：2016.9.29
  * 
  */
 using UnityEngine;
@@ -67,7 +66,7 @@ public class GameManager : PunBehaviour
         }
     }
     /*
-     *学生作业提示：添加骷髅兵必要组件 完成并完成生成池对骷髅兵调度
+     *添加骷髅兵必要组件 完成并完成生成池对骷髅兵调度
      *模仿僵尸组件添加骷髅并组件  模仿僵尸生成池机制对骷髅兵进行调度
      */
     private ZombieGenerator m_skeletonGenerator;//生成器实例
@@ -208,9 +207,7 @@ public class GameManager : PunBehaviour
             m_zombieGenerator.initGenerator();
             photonView.RPC("getGeneratorId", PhotonTargets.All, ob.GetPhotonView().viewID, "Zombie");
 
-            /* 学生作业：
-             * 添加骷髅兵 完成并完成生成池对骷髅兵调度（模仿僵尸生成池）
-             */
+            //添加骷髅兵 完成并完成生成池对骷髅兵调度（模仿僵尸生成池）
             ob = PhotonNetwork.InstantiateSceneObject("SkeletonGenerator", Vector3.zero, Quaternion.identity, 0, null);
             m_skeletonGenerator = ob.GetComponent<ZombieGenerator>();
             m_skeletonGenerator.initGenerator();
@@ -229,9 +226,7 @@ public class GameManager : PunBehaviour
         {
             this.m_skeletonGenerator = ob.GetComponent<ZombieGenerator>();
         }
-         /* 学生作业：
-          * 添加骷髅兵 完成并完成生成池对骷髅兵调度（模仿僵尸生成池）
-          */
+        //添加骷髅兵 完成并完成生成池对骷髅兵调度（模仿僵尸生成池）
     }
 	//每帧执行 主要是执行状态机的update函数 并对状态机是否达到结束状态进行检测 结束的话则需要进行状态机变更
 	void Update () {

@@ -271,8 +271,9 @@ public class AchievementPanelController : MonoBehaviour {
         }
     }
 
-    /* 实现成就奖励领取按钮的响应函数GetReward以及相关PlayFab请求成功或者失败的回调函数
+    /* 学生作业：实现成就奖励领取按钮的响应函数GetReward以及相关PlayFab请求成功或者失败的回调函数
      * GetReward函数的两个参数解释：name表示成就奖励名称，value表示成就奖励的金币数。
+     * 作业提示：
      * 首先，启用processingWindow窗口，提示正在处理玩家领取成就奖励的请求；
      * 其次，使用UpdateUserDataRequest函数，更新玩家的自定义属性Player Data,包括玩家已领取相关成就奖励的数据；
      * UpdateUserDataRequest函数调用成功后，使用GetUserDataRequest函数，重新获取玩家的自定义属性，保存在PlayFabUserData类的userData中；

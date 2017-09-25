@@ -48,6 +48,7 @@ public class RegisterPanelController : MonoBehaviour {
                 Username = username.text,
                 Email = email.text,
 				Password = password.text,
+                DisplayName = username.text,
 				RequireBothUsernameAndEmail = true  //注册信息需要包含注册账号的账号名和绑定邮箱
 			};
 			PlayFabClientAPI.RegisterPlayFabUser 
@@ -67,6 +68,7 @@ public class RegisterPanelController : MonoBehaviour {
 		PlayerPrefs.SetString ("Account", username.text);   
         PlayFabUserData.playFabId = result.PlayFabId;
 		PlayFabUserData.username = username.text;
+        PlayFabUserData.displayName = username.text;
 
         //连接Photon服务器
 		PhotonNetwork.ConnectUsingSettings ("1.0");

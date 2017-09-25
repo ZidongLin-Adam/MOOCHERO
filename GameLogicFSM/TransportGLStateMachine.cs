@@ -16,7 +16,7 @@ public class TransportGLStateMachine : BaseGLStateMachine
 
     public TransportGLStateMachine() { }
 
-    /* 学生作业：
+    /* 
      * 完成宝物运输状态机TransportGLStateMachine  Enter、Exit、update函数填充
      * 本代码实例中仅对 Enter、Exit、update3个函数提供了部分实现，请将这些函数填充完整，使运输状态可以正确执行
      */
@@ -25,7 +25,7 @@ public class TransportGLStateMachine : BaseGLStateMachine
     {
         this.startCountDown(transportAddDuration + GameManager.gm.remainTime + PhotonNetwork.time);
         //GMInstance.UIController.updateProcessText("请完善状态机中其他代码!");
-        /* 学生作业：
+        /* 
          * 首先，启用怪物生成器（包括僵尸和骷髅）
          * 其次，更新UI面板，启用宝物车剩余距离UI
          * 接着，启用宝物车控制器
@@ -61,7 +61,7 @@ public class TransportGLStateMachine : BaseGLStateMachine
     //退出状态机
     public override void Exit()
     {
-        /* 学生作业：
+        /* 
          * 停止怪物生成器的工作（包括僵尸和骷髅）
          * 停止宝物车控制器
          * 游戏结束时，为了保证宝物车的剩余距离为0，强制更新剩余距离UI为0米
@@ -84,7 +84,7 @@ public class TransportGLStateMachine : BaseGLStateMachine
         GMInstance.UIController.updateTimeLabelForProcess((int)m_countDown);
         GMInstance.UIController.updatePlayerHPLabel(GMInstance.playerHealth.currentHP);
 
-        /* 学生作业：
+        /* 
 		 * 计算宝物车剩余距离
 		 * 更新剩余距离UI
 		 */
@@ -100,7 +100,7 @@ public class TransportGLStateMachine : BaseGLStateMachine
 #endif
         if (PhotonNetwork.isMasterClient)
         {
-            /* 学生作业：
+            /* 
 			 * 倒计时结束，宝物车没有到达终点，保卫者胜利
 			 * 规定时间内，车到达了终点，盗墓者胜利
 			 */

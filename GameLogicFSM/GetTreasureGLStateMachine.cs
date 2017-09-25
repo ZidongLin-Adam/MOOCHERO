@@ -26,7 +26,7 @@ public class GetTreasureGLStateMachine : BaseGLStateMachine
         GuardZombie = GameObject.FindWithTag("Guard");
         //僵尸生成池开始工作
         GMInstance.zombieGenerator.generatorStartWorking();
-        /* 学生作业：
+        /* 
          * 添加骷髅兵 完成并完成生成池对骷髅兵调度（模仿僵尸生成池）
          */
         //骷髅生成池开始工作
@@ -55,7 +55,7 @@ public class GetTreasureGLStateMachine : BaseGLStateMachine
             GMInstance.gameStateQueue.Enqueue("transport");
         //僵尸生成池停止工作
 		GMInstance.zombieGenerator.generatorStopWorking();
-        /* 学生作业：
+        /* 
          * 添加骷髅兵 完成并完成生成池对骷髅兵调度（模仿僵尸生成池）
          */
         //骷髅生成池停止工作
